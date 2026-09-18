@@ -1,10 +1,10 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/editor.html" }
+    { "source": "/", "destination": "/display.html" }
   ],
   "headers": [
     {
-      "source": "/editor.html",
+      "source": "/display.html",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }
       ]
