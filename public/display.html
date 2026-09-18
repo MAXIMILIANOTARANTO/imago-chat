@@ -1,16 +1,554 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Imago AI — Display</title>
-<style>
-:root{color-scheme:dark;--bg:#080b11;--panel:#111723;--line:#263248;--muted:#8793a8;--text:#eef4ff;--accent:#7be5c4;--accent2:#8c9cff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#21414b 0,#080b11 55%);color:var(--text);font:14px Inter,system-ui,sans-serif;min-height:100vh}header{height:70px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:#090d14cc;backdrop-filter:blur(18px)}.brand{font-size:19px;font-weight:800;letter-spacing:.08em}.brand i{font-style:normal;color:var(--accent);font-weight:400}.pill{border:1px solid var(--line);border-radius:99px;padding:7px 11px;color:var(--muted);font-size:12px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:7px;box-shadow:0 0 12px var(--accent)}main{display:grid;grid-template-columns:300px minmax(360px,1fr) 270px;gap:16px;padding:16px;min-height:calc(100vh - 70px)}.panel,.canvas{border:1px solid var(--line);border-radius:16px;background:#111723e8;box-shadow:0 14px 45px #0003}.panel{padding:18px}.canvas{min-height:calc(100vh - 102px);display:grid;place-items:center;position:relative;overflow:hidden;background-color:#0e141f;background-image:linear-gradient(45deg,#151d2b 25%,transparent 25%),linear-gradient(-45deg,#151d2b 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#151d2b 75%),linear-gradient(-45deg,transparent 75%,#151d2b 75%);background-size:28px 28px;background-position:0 0,0 14px,14px -14px,-14px 0}.empty{text-align:center;color:var(--muted}.empty b{display:block;color:var(--text);font-size:20px;margin-bottom:8px}.result{max-width:94%;max-height:88%;border-radius:10px;box-shadow:0 20px 70px #000b;display:none}.eyebrow{text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-size:11px;font-weight:700;margin:2px 0 16px}label{display:block;color:#cbd4e3;font-size:12px;margin:14px 0 6px}textarea,input,select{width:100%;border:1px solid var(--line);border-radius:9px;background:#0a0e16;color:var(--text);padding:11px;font:inherit}textarea{height:145px;resize:vertical}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}button{width:100%;border:1px solid var(--line);background:#1a2434;color:var(--text);border-radius:9px;padding:11px;font-weight:650;cursor:pointer;margin-top:10px}button:hover{border-color:var(--accent)}button.primary{border:0;background:linear-gradient(135deg,var(--accent),#b1f2d9);color:#062119;box-shadow:0 8px 25px #75e0bf33}.hint{color:var(--muted);font-size:12px;line-height:1.5}.history{display:grid;grid-template-columns:1fr 1fr;gap:8px}.thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer}.bar{position:absolute;bottom:16px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:#0a0e16dd;border:1px solid var(--line);color:var(--muted);font-size:12px}.bar button{width:auto;margin:0;padding:7px 10px}.hidden{display:none!important}@media(max-width:1000px){main{grid-template-columns:1fr}.canvas{min-height:60vh;order:-1}.panel{min-height:auto}}
-</style></head>
-<body><header><div class="brand">IMAGO <i>AI display</i></div><div class="pill"><span class="dot"></span><span id="mode">POLLINATIONS · WEB</span></div></header>
-<main><section class="panel"><div class="eyebrow">Create</div><label for="prompt">Prompt</label><textarea id="prompt" placeholder="Un paisaje futurista al amanecer, cinematográfico, ultra detallado..."></textarea><label for="negative">Prompt negativo <span class="hint">(opcional)</span></label><input id="negative" placeholder="borroso, baja calidad, texto ilegible"><label for="provider">Motor</label><select id="provider"><option value="pollinations">Pollinations · web</option><option value="comfy">ComfyUI · local</option></select><div class="grid"><div><label for="width">Ancho</label><input id="width" type="number" value="1024" min="256" max="2048" step="64"></div><div><label for="height">Alto</label><input id="height" type="number" value="1024" min="256" max="2048" step="64"></div></div><label for="model">Modelo</label><select id="model"><option>flux</option><option>turbo</option></select><button id="generate" class="primary">✦ Generar imagen</button><p id="status" class="hint">Listo. La imagen se procesa según el motor elegido.</p></section><section class="canvas"><div id="empty" class="empty"><b>Tu lienzo creativo</b>Escribí un prompt y generá tu primera imagen.</div><img id="result" class="result" alt="Imagen generada"><div class="bar"><span id="meta">Sin imagen · memoria local activa</span><button id="download" disabled>Descargar</button></div></section><aside class="panel"><div class="eyebrow">Memoria local</div><p class="hint">Tus resultados se registran en este navegador, no en GitHub.</p><button id="clear">Limpiar historial</button><div id="history" class="history"></div><div class="eyebrow" style="margin-top:24px">Presets</div><button class="preset" data-p="Retrato editorial, luz de ventana, fotografía profesional, 85mm">Retrato editorial</button><button class="preset" data-p="Arquitectura brutalista futurista, niebla, luz volumétrica, cinematic">Arquitectura futurista</button><button class="preset" data-p="Ilustración fantástica, bosque bioluminiscente, arte conceptual detallado">Fantasía</button></aside></main>
-<script>
-const $=id=>document.getElementById(id),state={url:''};const dbp=indexedDB.open('imago-display',1);dbp.onupgradeneeded=e=>e.target.result.createObjectStore('images',{keyPath:'id',autoIncrement:true});const db=()=>dbp.result;
-function msg(t,error=false){$('status').textContent=t;$('status').style.color=error?'#ff8994':'var(--muted)'}function url(){const p=$('prompt').value.trim();if(!p)throw Error('Escribí un prompt para comenzar');const q=new URLSearchParams({width:$('width').value,height:$('height').value,model:$('model').value,nologo:'true',seed:String(Math.floor(Math.random()*1e9))});if($('negative').value)q.set('negative_prompt',$('negative').value);return 'https://image.pollinations.ai/prompt/'+encodeURIComponent(p)+'?'+q}
-function render(u){state.url=u;$('result').src=u;$('result').style.display='block';$('empty').classList.add('hidden');$('download').disabled=false;$('meta').textContent='Imagen generada · guardada localmente';const tx=db().transaction('images','readwrite');tx.objectStore('images').add({url:u,prompt:$('prompt').value,date:Date.now()});tx.oncomplete=history}
-function history(){const r=db().transaction('images').objectStore('images').getAll();r.onsuccess=()=>{$('history').innerHTML='';r.result.slice(-10).reverse().forEach(i=>{const im=document.createElement('img');im.src=i.url;im.className='thumb';im.title=i.prompt;im.onclick=()=>render(i.url);$('history').append(im)})}}
-$('generate').onclick=async()=>{try{$('generate').disabled=true;msg('Generando imagen…');const u=url();await new Promise((ok,no)=>{const im=new Image();im.onload=ok;im.onerror=()=>no(Error('El proveedor no respondió. Probá otra vez.'));im.src=u});render(u);msg('Imagen lista')}catch(e){msg(e.message,true)}finally{$('generate').disabled=false}};$('download').onclick=()=>{const a=document.createElement('a');a.href=state.url;a.download='imago.png';a.target='_blank';a.click()};$('provider').onchange=()=>{$('mode').textContent=$('provider').value==='comfy'?'COMFYUI · LOCAL':'POLLINATIONS · WEB';if($('provider').value==='comfy')msg('El display está listo; conectá ComfyUI en 127.0.0.1:8188.')};$('clear').onclick=()=>{db().transaction('images','readwrite').objectStore('images').clear();$('history').innerHTML='';msg('Historial local eliminado')};document.querySelectorAll('.preset').forEach(b=>b.onclick=()=>{$('prompt').value=b.dataset.p});history();
-</script></body></html>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Imago AI</title>
+  <style>
+    :root {
+      --bg: #070b11;
+      --bg-2: #0f1722;
+      --panel: rgba(17, 24, 35, 0.9);
+      --panel-strong: #121b28;
+      --line: rgba(148, 163, 184, 0.2);
+      --text: #edf2ff;
+      --muted: #99a7bb;
+      --accent: #8ef0c9;
+      --accent-2: #8ea8ff;
+      --danger: #ff9ea6;
+      --shadow: rgba(0, 0, 0, 0.4);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(75, 121, 126, 0.3), transparent 30%),
+        linear-gradient(180deg, #071018, #090d12 40%);
+      color: var(--text);
+    }
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 78px 1fr;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      background: rgba(9, 11, 16, 0.82);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(16px);
+    }
+    .brand {
+      font-size: 1.1rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .brand span { color: var(--accent); font-weight: 700; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+      color: var(--muted);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 16px rgba(142,240,201,0.9);
+      display: inline-block;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 310px minmax(420px, 1fr) 280px;
+      gap: 16px;
+      padding: 16px;
+      min-height: 0;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 16px 60px var(--shadow);
+      padding: 18px;
+      overflow: hidden;
+    }
+    .preview {
+      background:
+        linear-gradient(180deg, rgba(16, 21, 28, 0.9), rgba(12, 15, 22, 0.96)),
+        linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.02) 75%),
+        linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.02) 75%);
+      background-size: 100%, 24px 24px, 24px 24px;
+      background-position: center, 0 0, 12px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-height: 100%;
+      overflow: hidden;
+    }
+    .result {
+      max-width: 96%;
+      max-height: 84%;
+      border-radius: 14px;
+      box-shadow: 0 24px 90px rgba(0,0,0,0.55);
+      object-fit: cover;
+      display: none;
+    }
+    .placeholder {
+      text-align: center;
+      color: var(--muted);
+      max-width: 340px;
+      line-height: 1.65;
+    }
+    .placeholder strong {
+      display: block;
+      color: var(--text);
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      color: #dfe8f8;
+      font-size: 0.76rem;
+      margin: 0 0 6px;
+      font-weight: 600;
+    }
+    textarea, input, select, button {
+      font: inherit;
+    }
+    textarea, input, select {
+      width: 100%;
+      background: rgba(8, 12, 18, 0.9);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+    }
+    textarea:focus, input:focus, select:focus {
+      border-color: rgba(142,240,201,0.8);
+      box-shadow: 0 0 0 3px rgba(142,240,201,0.12);
+    }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .primary {
+      margin-top: 18px;
+      width: 100%;
+      border: 0;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), #b3f7db);
+      color: #062319;
+      cursor: pointer;
+      padding: 12px 14px;
+      font-weight: 800;
+      box-shadow: 0 14px 32px rgba(142,240,201,0.22);
+    }
+    .secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: auto;
+      min-width: 120px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+      color: var(--text);
+      cursor: pointer;
+      padding: 9px 11px;
+      margin-top: 8px;
+    }
+    .status {
+      margin-top: 12px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.5;
+      min-height: 36px;
+    }
+    .preview-bar {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(7, 12, 18, 0.78);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+    }
+    .mini {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .thumb {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+      cursor: pointer;
+      display: block;
+    }
+    .preset {
+      width: 100%;
+      padding: 10px 12px;
+      margin-top: 10px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .preview { min-height: 60vh; }
+      .app { height: auto; min-height: 100vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">Imago <span>AI</span></div>
+      <div class="status-pill"><span class="dot"></span><span id="modeLabel">Pollinations · web</span></div>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <div class="eyebrow">Create</div>
+
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" placeholder="Retrato editorial de una mujer de 35 años, luz de ventana, detalle facial, cinematográfico…"></textarea>
+
+        <label for="negative">Prompt negativo</label>
+        <input id="negative" placeholder="borroso, baja calidad, dedos extra, artefactos" />
+
+        <label for="provider">Proveedor</label>
+        <select id="provider">
+          <option value="pollinations">Pollinations · web</option>
+          <option value="comfy">ComfyUI · local</option>
+        </select>
+
+        <div class="grid2" style="margin-top: 12px;">
+          <div>
+            <label for="width">Ancho</label>
+            <input id="width" type="number" value="1024" min="256" max="2048" step="64" />
+          </div>
+          <div>
+            <label for="height">Alto</label>
+            <input id="height" type="number" value="1024" min="256" max="2048" step="64" />
+          </div>
+        </div>
+
+        <label for="model" style="margin-top: 12px;">Modelo</label>
+        <select id="model">
+          <option value="flux">flux</option>
+          <option value="turbo">turbo</option>
+        </select>
+
+        <button id="generate" class="primary">✦ Generar imagen</button>
+        <div id="status" class="status">Listo. Elige un proveedor y genera.</div>
+      </section>
+
+      <section class="panel preview">
+        <div id="placeholder" class="placeholder">
+          <strong>Tu lienzo creativo</strong>
+          Escribí un prompt y crea una imagen con un solo clic.
+        </div>
+        <img id="result" class="result" alt="Resultado generado" />
+
+        <div class="preview-bar">
+          <span id="meta">Sin imagen todavía</span>
+          <button id="download" class="secondary" disabled>Descargar</button>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="eyebrow">Memoria local</div>
+        <div class="status" style="margin-top:0; min-height: 0;">Historial guardado en el navegador.</div>
+        <button id="clear" class="secondary">Limpiar historial</button>
+
+        <div class="mini" id="history"></div>
+
+        <div class="eyebrow" style="margin-top: 20px;">Presets</div>
+        <button class="preset" data-prompt="Retrato editorial femenino, luz de ventana, 85mm, detalle facial, iluminación natural, fotografía cinematográfica">Retrato editorial</button>
+        <button class="preset" data-prompt="Arquitectura brutalista futurista, niebla, luz volumétrica, reflejos, detalle urbano, cinematográfico">Arquitectura futurista</button>
+        <button class="preset" data-prompt="Bosque bioluminiscente, ilustración detallada, atmósfera mística, colores profundos, arte conceptual">Bosque mágico</button>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { currentUrl: '' };
+
+    function setStatus(message, isError = false) {
+      const el = $('status');
+      el.textContent = message;
+      el.style.color = isError ? '#ff9ea6' : '#99a7bb';
+    }
+
+    const DB_NAME = 'imago-ai-db';
+    const DB_OPEN = indexedDB.open(DB_NAME, 1);
+    DB_OPEN.onupgradeneeded = () => {
+      const db = DB_OPEN.result;
+      if (!db.objectStoreNames.contains('images')) {
+        db.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+
+    function getDb() {
+      return DB_OPEN.result;
+    }
+
+    function buildPollinationsUrl() {
+      const prompt = $('prompt').value.trim();
+      if (!prompt) throw new Error('Escribí un prompt para generar.');
+
+      const params = new URLSearchParams({
+        width: $('width').value,
+        height: $('height').value,
+        model: $('model').value,
+        seed: String(Math.floor(Math.random() * 900000000) + 100000000),
+        nologo: 'true'
+      });
+
+      const negative = $('negative').value.trim();
+      if (negative) params.set('negative_prompt', negative);
+
+      return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${params.toString()}`;
+    }
+
+    function showImage(src) {
+      state.currentUrl = src;
+      $('result').src = src;
+      $('result').style.display = 'block';
+      $('placeholder').classList.add('hidden');
+      $('download').disabled = false;
+      $('meta').textContent = 'Imagen lista · almacenada localmente';
+      saveToHistory(src, $('prompt').value.trim());
+    }
+
+    function saveToHistory(url, prompt) {
+      try {
+        const db = getDb();
+        if (!db) return;
+        const tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').add({ url, prompt, createdAt: Date.now() });
+      } catch (e) {
+        // Silencioso: historial local opcional
+      }
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const db = getDb();
+      if (!db) return;
+      const req = db.transaction('images').objectStore('images').getAll();
+      req.onsuccess = () => {
+        const items = req.result.slice(-8).reverse();
+        $('history').innerHTML = '';
+        items.forEach(item => {
+          const img = document.createElement('img');
+          img.className = 'thumb';
+          img.src = item.url;
+          img.alt = item.prompt || 'Historial';
+          img.title = item.prompt || 'Historial';
+          img.addEventListener('click', () => showImage(item.url));
+          $('history').appendChild(img);
+        });
+      };
+    }
+
+    async function generateWithPollinations() {
+      const url = buildPollinationsUrl();
+      setStatus('Generando con Pollinations…');
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('Pollinations no respondió. Intenta otra vez.'));
+        img.src = url;
+      });
+      showImage(url);
+      setStatus('Imagen lista.');
+    }
+
+    async function generateWithComfy() {
+      const prompt = $('prompt').value.trim();
+      if (!prompt) throw new Error('Escribí un prompt para ComfyUI.');
+
+      const endpoint = 'http://127.0.0.1:8188';
+      const width = Number($('width').value || 1024);
+      const height = Number($('height').value || 1024);
+      const seed = Number($('seed')?.value ?? Math.floor(Math.random() * 9999999));
+      const negative = $('negative').value.trim() || 'blurry, low quality';
+
+      const workflow = {
+        3: {
+          class_type: 'KSampler',
+          inputs: {
+            seed,
+            steps: 20,
+            cfg: 7,
+            sampler_name: 'euler',
+            scheduler: 'normal',
+            denoise: 1,
+            model: ['4', 0],
+            positive: ['6', 0],
+            negative: ['7', 0],
+            latent_image: ['5', 0]
+          }
+        },
+        4: {
+          class_type: 'CheckpointLoaderSimple',
+          inputs: { ckpt_name: 'model.safetensors' }
+        },
+        5: {
+          class_type: 'EmptyLatentImage',
+          inputs: { width, height, batch_size: 1 }
+        },
+        6: {
+          class_type: 'CLIPTextEncode',
+          inputs: { text: prompt, clip: ['4', 1] }
+        },
+        7: {
+          class_type: 'CLIPTextEncode',
+          inputs: { text: negative, clip: ['4', 1] }
+        },
+        8: {
+          class_type: 'VAEDecode',
+          inputs: { samples: ['3', 0], vae: ['4', 2] }
+        },
+        9: {
+          class_type: 'SaveImage',
+          inputs: { filename_prefix: 'imago', images: ['8', 0] }
+        }
+      };
+
+      setStatus('Conectando con ComfyUI…');
+      const res = await fetch(`${endpoint}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: workflow, client_id: 'imago-ai' })
+      });
+
+      if (!res.ok) {
+        throw new Error('No se pudo conectar a ComfyUI. Arranca ComfyUI en 127.0.0.1:8188.');
+      }
+
+      const data = await res.json();
+      const promptId = data.prompt_id;
+      if (!promptId) throw new Error('ComfyUI no devolvió un prompt_id válido.');
+
+      for (let i = 0; i < 90; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        const histRes = await fetch(`${endpoint}/history/${promptId}`);
+        if (!histRes.ok) continue;
+        const hist = await histRes.json();
+        const outputs = hist[promptId]?.outputs || {};
+        for (const node of Object.values(outputs)) {
+          const images = node.images || [];
+          for (const img of images) {
+            const imageUrl = `${endpoint}/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder || '')}&type=${encodeURIComponent(img.type || 'output')}`;
+            showImage(imageUrl);
+            setStatus('Imagen generada con ComfyUI local.');
+            return;
+          }
+        }
+      }
+
+      throw new Error('ComfyUI tardó demasiado en devolver la imagen.');
+    }
+
+    $('generate').addEventListener('click', async () => {
+      try {
+        $('generate').disabled = true;
+        const provider = $('provider').value;
+        if (provider === 'comfy') {
+          await generateWithComfy();
+        } else {
+          await generateWithPollinations();
+        }
+      } catch (error) {
+        setStatus(error.message || 'Error al generar la imagen.', true);
+      } finally {
+        $('generate').disabled = false;
+      }
+    });
+
+    $('download').addEventListener('click', () => {
+      if (!state.currentUrl) return;
+      const a = document.createElement('a');
+      a.href = state.currentUrl;
+      a.download = 'imago-ai.png';
+      a.target = '_blank';
+      a.click();
+    });
+
+    $('clear').addEventListener('click', () => {
+      const db = getDb();
+      if (!db) return;
+      const tx = db.transaction('images', 'readwrite');
+      tx.objectStore('images').clear();
+      renderHistory();
+      setStatus('Historial local borrado.');
+    });
+
+    document.querySelectorAll('.preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $('prompt').value = btn.getAttribute('data-prompt') || '';
+        $('prompt').focus();
+      });
+    });
+
+    $('provider').addEventListener('change', () => {
+      const mode = $('provider').value === 'comfy' ? 'ComfyUI · local' : 'Pollinations · web';
+      $('modeLabel').textContent = mode;
+      setStatus(mode === 'ComfyUI · local' ? 'Modo local. Asegurate de tener ComfyUI en 127.0.0.1:8188.' : 'Modo web. Pollinations genera online.');
+    });
+
+    renderHistory();
+    $('provider').dispatchEvent(new Event('change'));
+  </script>
+</body>
+</html>
